@@ -1,0 +1,67 @@
+name: adaptive_learning
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: adaptive_learning_db
+    environment:
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: change_me
+      POSTGRES_DB: adaptive_learning
+    ports:
+      - "5433:5432"
+    volumes:
+      - adaptive_learning_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d adaptive_learning"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - adaptive_learning_network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: adaptive_learning_qdrant
+    ports:
+      - "6334:6333"
+    volumes:
+      - adaptive_learning_qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:6333/readyz || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - adaptive_learning_network
+
+  api:
+    build: 
+      context: .
+      network: host
+    container_name: adaptive_learning_api
+    ports:
+      - "8001:8000"
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql+psycopg://app_user:change_me@db:5432/adaptive_learning
+      - APP_ENV=development
+      - DEBUG=true
+      - JWT_SECRET_KEY=09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7
+      - CORS_ORIGINS=http://localhost:5173
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - adaptive_learning_network
+
+volumes:
+  adaptive_learning_postgres_data:
+    name: adaptive_learning_postgres_data
+  adaptive_learning_qdrant_data:
+    name: adaptive_learning_qdrant_data
+
+networks:
+  adaptive_learning_network:
+    name: adaptive_learning_network

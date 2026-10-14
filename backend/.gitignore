@@ -8,3 +8,9 @@ __pycache__/
 htmlcov/
 storage/*
 !storage/.gitkeep
+scratch/
+*_frames/
+*.db
+*.sqlite
+test.db
+temp.md
